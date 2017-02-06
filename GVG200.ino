@@ -790,6 +790,8 @@ uint8_t segDisp[] = { 0b00111111, 0b00000110, 0b01011011, 0b1001111, 0b01100110,
 uint8_t previousLamp[255] = {0};
 uint8_t previousDim[9] = {0};
 
+uint8_t storedLamp[255] = {0};
+
 uint8_t previousButtons_XPT[22] = {0};
 uint8_t previousButtons_DSK[8] = {0};
 uint8_t previousButtons_DSK_SEC[5] = {0};
@@ -1332,6 +1334,22 @@ void write7SegDisplay(uint8_t address, char data[6]) {
   }
 }
 
+void storeandclearLamps() {
+  memcpy(storedLamp,previousLamp,256);
+  for(int i=0;i<397;i++) writeLamp(i,0);
+}
+
+void restoreLamps() {
+  // 0 all lamps
+  for(int i=0;i<397;i++) writeLamp(i,0);
+  // now write out to addresses that have data in (then we don't accidentally set displays/dimmers
+  for(int i=0;i<256;i++) {
+    if(storedLamp[i]) {
+      sendData(i,storedLamp[i]);
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   
@@ -1453,9 +1471,21 @@ void loop() {
           break;
       }
     } else {
-      if(buffer[0]=='a') {
-        Serial.println(readAnalog(atoi(buffer+1)));
-      } else if(buffer[0]=='!') resetFunc();
+      // things that don't require two values
+      switch(buffer[0]) {
+        case 'a':
+          Serial.print("a");Serial.print(atoi(buffer+1));Serial.print(",");Serial.println(readAnalog(atoi(buffer+1)));
+          break;
+        case '!':
+          resetFunc();
+        case '~':
+          Serial.println("Analog Calibrate mode");
+          storeandclearLamps();
+          Serial.println("Waiting...");
+          waitSerial();
+          restoreLamps();
+          break;
+      }
     }
     memset(buffer, 0, BUFFER_SIZE);
   }
