@@ -22,6 +22,8 @@ ENABLE_EDITOR = 329
 ENABLE_GPI	= 330
 ENABLE_PERIPH = 331
 ENABLE_EXTRA = 332
+ME1_TRANS_CUT = 163
+
 
 mode = ""
 
@@ -54,8 +56,10 @@ def recv():
 
 def receive_thread():
 	while True:
-		recv()
-
+		try:
+			recv()
+		except:
+			print "Serial Error occurred. Skipping"
 def operation_thread():
 	print "Setting operation"
 	global mode
