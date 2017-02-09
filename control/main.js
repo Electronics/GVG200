@@ -1,7 +1,7 @@
 var SerialPort = require("serialport");
 var ATEM = require('applest-atem');
 
-var port = new SerialPort("/dev/tty-usbserial1", {
+var port = new SerialPort("/dev/ttyUSB0", {
   baudRate: 57600,
   parser: SerialPort.parsers.readline('\n')
 });
