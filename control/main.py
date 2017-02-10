@@ -22,6 +22,18 @@ ENABLE_EXTRA = 332
 
 mode = ""
 
+import socket
+
+clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+clientsocket.connect(('localhost', 5000))
+
+
+def interface_thread():
+	clientsocket.sendall("atem.status")
+	dat = clientsocket.recv(1024)
+	print dat
+
+
 def setlight(addr, state):
 	s.write("l"+str(addr)+","+str(state)+"\x00")
 
@@ -95,6 +107,10 @@ rthread.start()
 othread = threading.Thread(target=operation_thread)
 othread.daemon = True
 othread.start()
+
+ithread = threading.Thread(target=interface_thread)
+ithread.daemon = True
+ithread.start()
 
 while True:
 	print "Main Thread"
