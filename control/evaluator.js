@@ -22,19 +22,20 @@ net.createServer(function (socket) {
   // Handle incoming messages from clients.
   socket.on('data', function (data) {
     to_eval = data.toString();
+    console.log(to_eval);
     try {
       out = eval(to_eval);
+      to_eval = data.toString();  
+	socket.write(JSON.stringify(out));  
     } catch (err) {
       out = "ERR";
     }
     
-    socket.write(JSON.stringify(out));
   });
 
   // Remove the client from the list when it leaves
   socket.on('end', function () {
     clients.splice(clients.indexOf(socket), 1);
-    broadcast(socket.name + " left the chat.\n");
   });
   
 

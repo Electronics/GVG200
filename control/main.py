@@ -29,10 +29,12 @@ clientsocket.connect(('localhost', 5000))
 
 
 def interface_thread():
-	clientsocket.sendall("atem.status")
-	dat = clientsocket.recv(1024)
-	print dat
-
+	while 1:
+#		print "WAITING"
+		clientsocket.sendall("atem.state")
+		dat = clientsocket.recv(1024)
+#		print dat
+		sleep(0.05);
 
 def setlight(addr, state):
 	s.write("l"+str(addr)+","+str(state)+"\x00")
@@ -44,6 +46,7 @@ def setdisplay(addr, val):
 def recv():
 	cmd = s.readline()
 	global mode
+#	print cmd
 	#Analogue value reading
 	if(cmd[:1]=="a"):
 		p = cmd[1:].split(",")
@@ -52,6 +55,8 @@ def recv():
 		return
 
 	if(cmd[:1]=="b"):
+		print "BUTTONPRESS"
+		print cmd
 		p = cmd[1:].split(",")
 		#Puts it into the button dict as ADDR:VAL
 		button[int(p[0])] = int(p[1])
@@ -63,8 +68,10 @@ def recv():
 
 def receive_thread():
 	while True:
-		recv()
-
+		try:
+			recv()
+		except:
+			print "Recv error"
 def operation_thread():
 	print "Setting operation"
 	global mode
@@ -98,7 +105,10 @@ def operation_thread():
 			print "Analog Calibrate"
 			s.write("~")
 			button[MENU_3]=0
-
+		if(button[163]==1):
+			print "TRANSITION"
+			clientsocket.sendall("atem.autoTransition()")
+			button[163]=0
 
 rthread = threading.Thread(target=receive_thread)
 rthread.daemon = True
