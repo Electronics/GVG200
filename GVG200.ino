@@ -804,6 +804,15 @@ uint8_t analogValues[64] = {0};
 #define NEW_NUM_WEIGHT 3
 #define OLD_NUM_WEIGHT 10
 
+uint16_t ME1_top = 379;
+uint16_t ME1_bottom = 32;
+uint16_t ME2_top = 368;
+uint16_t ME2_bottom = 22;
+uint16_t joystick_top = 480;
+uint16_t joystick_bottom = 253;
+uint16_t joystick_left = 417;
+uint16_t joystick_right = 672;
+
 long int lastFlip = 0;
 
 uint8_t booting = 0;
@@ -1191,22 +1200,27 @@ void readAllButtons() {
   }
 }
 
-#define DEADZONE 5
+#define DEADZONE 2
 void readAllAnalogs() {
   uint16_t scaledValue;
   for(int i=0;i<64;i++) {
     write_analog_address(i);
     delayMicroseconds(50);
     scaledValue = analogRead(A0);
-    if(i==0) scaledValue = map(scaledValue,110,235,255,0);
-    else if(i==1) scaledValue = map(scaledValue,5,367,255,0);
-    else if(i==2) scaledValue = map(scaledValue,96,1170,0,255);
-    else if(i==3) scaledValue = map(scaledValue,40,140,255,0);
-    else scaledValue = map(scaledValue,0,211,255,0);
-    if(scaledValue>60000) scaledValue=0;
-    if(scaledValue>255) scaledValue=255;
-    scaledValue=(scaledValue*NEW_NUM_WEIGHT + (OLD_NUM_WEIGHT-NEW_NUM_WEIGHT)*analogValues[i])/OLD_NUM_WEIGHT;
-    if((scaledValue>analogValues[i]+DEADZONE && analogValues[i]<255-DEADZONE) || (scaledValue<analogValues[i]-DEADZONE && analogValues[i]>DEADZONE)) {
+    if(i==0) scaledValue = constrain(map(scaledValue,ME1_bottom,ME1_top,0,255),0,255);
+    else if(i==1) scaledValue = constrain(map(scaledValue,ME2_bottom,ME2_top,0,255),0,255);
+    else if(i==2) scaledValue = constrain(map(scaledValue,joystick_bottom,joystick_top,0,255),0,255);
+    else if(i==3) scaledValue = constrain(map(scaledValue,joystick_left,joystick_right,0,255),0,255);
+    else scaledValue = map(scaledValue,0,960,255,0);
+
+    if(i<2 && (scaledValue==255 || scaledValue==0)) {
+      // We need to acctually show the 0/255 for T bars
+    }
+    else {
+      scaledValue=(scaledValue*NEW_NUM_WEIGHT + (OLD_NUM_WEIGHT-NEW_NUM_WEIGHT)*analogValues[i])/OLD_NUM_WEIGHT;
+    }
+    
+    if((scaledValue>analogValues[i]+DEADZONE && analogValues[i]<255-DEADZONE) || (scaledValue<analogValues[i]-DEADZONE && analogValues[i]>DEADZONE) || ((analogValues[i]!=scaledValue) && (scaledValue==0 || scaledValue==255))) {
       analogValues[i] = scaledValue;
       if(booting) continue;
       Serial.print("a");Serial.print(i);Serial.print(",");Serial.println(scaledValue);
@@ -1215,7 +1229,7 @@ void readAllAnalogs() {
 }
 
 uint16_t readAnalog(uint8_t address) {
-  Serial.print("address ");Serial.println(address);
+  //Serial.print("address ");Serial.println(address);
   return analogValues[address];
 }
 
@@ -1352,6 +1366,7 @@ void restoreLamps() {
 
 void setup() {
   Serial.begin(115200);
+  randomSeed(analogRead(A1));
   
   pinMode(WRITE,OUTPUT);
   pinMode(READ, OUTPUT);
@@ -1393,7 +1408,7 @@ void setup() {
       readAllAnalogs();
     }
   } else {
-    writeDisplay("     Booting...\nVersion 0.50 by Laurie Kirkcaldy");
+    writeDisplay("     Booting...\nVersion 0.52 by Laurie Kirkcaldy");
  
   
     long int startTime = millis();
@@ -1429,6 +1444,7 @@ void setup() {
 
   booting = 0;
   writeDisplay("\x15\x0E");
+  delay(10);
 }
 
 void waitSerial() {
@@ -1479,11 +1495,194 @@ void loop() {
         case '!':
           resetFunc();
         case '~':
-          Serial.println("Analog Calibrate mode");
+          booting=1;
           storeandclearLamps();
-          Serial.println("Waiting...");
-          waitSerial();
+          writeDisplay("\x15");
+          delay(1); // wait for the display to catch up
+          // we now have a nice blank console
+          // should really store the display, but not easily sure how at the moment
+
+          writeDisplay("Analog Calibration Mode. Please move:\n");
+          writeDisplay("M/E 1 T-bar Down  Press ENTER when done\r");
+          writeLamp(321,1); // Enter button
+
+          writeLamp(165,1); // Down arrow
+          while(!(previousButtons_EFF_MEM[1] & 2)) readAllButtons(); // wait for press/release
+          while((previousButtons_EFF_MEM[1] & 2)) readAllButtons();
+          writeLamp(165,0);
+          uint16_t ME1_bottom_=0;
+          write_analog_address(0);
+          delayMicroseconds(50); // wait for settle
+          for(int i=0;i<10;i++) ME1_bottom_+=analogRead(A0); // average
+          ME1_bottom_=ME1_bottom_/10;
+
+          writeDisplay("M/E 1 T-bar Up  \r");
+          writeLamp(164,1); // Up arrow
+          while(!(previousButtons_EFF_MEM[1] & 2)) readAllButtons(); // wait for press/release
+          while((previousButtons_EFF_MEM[1] & 2)) readAllButtons();
+          writeLamp(164,0);
+          uint16_t ME1_top_=0;
+          write_analog_address(0);
+          delayMicroseconds(50); // wait for settle
+          for(int i=0;i<10;i++) ME1_top_+=analogRead(A0); // average
+          ME1_top_=ME1_top_/10;
+
+          writeDisplay("M/E 2 T-bar Down\r");
+          writeLamp(180,1); // Down arrow M/E2
+          while(!(previousButtons_EFF_MEM[1] & 2)) readAllButtons(); // wait for press/release
+          while((previousButtons_EFF_MEM[1] & 2)) readAllButtons();
+          writeLamp(180,0);
+          uint16_t ME2_bottom_=0;
+          write_analog_address(1);
+          delayMicroseconds(50); // wait for settle
+          for(int i=0;i<10;i++) ME2_bottom_+=analogRead(A0); // average
+          ME2_bottom_=ME2_bottom_/10;
+          Serial.println(ME2_bottom_);
+
+          writeDisplay("M/E 2 T-bar Up  \r");
+          writeLamp(179,1); // Up arrow
+          while(!(previousButtons_EFF_MEM[1] & 2)) readAllButtons(); // wait for press/release
+          while((previousButtons_EFF_MEM[1] & 2)) readAllButtons();
+          writeLamp(179,0);
+          uint16_t ME2_top_=0;
+          write_analog_address(1);
+          delayMicroseconds(50); // wait for settle
+          for(int i=0;i<10;i++) ME2_top_+=analogRead(A0); // average
+          ME2_top_=ME2_top_/10;
+          Serial.println(ME2_top_);
+
+          writeDisplay("Joystick Up      \r");
+          writeLamp(341,1);
+          writeLamp(349,1);
+          writeLamp(350,1);
+          writeLamp(351,1);
+          writeLamp(357,1);
+          writeLamp(359,1);
+          writeLamp(361,1);
+          writeLamp(368,1);
+          while(!(previousButtons_EFF_MEM[1] & 2)) readAllButtons(); // wait for press/release
+          while((previousButtons_EFF_MEM[1] & 2)) readAllButtons();
+          writeLamp(341,0);
+          writeLamp(349,0);
+          writeLamp(350,0);
+          writeLamp(351,0);
+          writeLamp(357,0);
+          writeLamp(359,0);
+          writeLamp(361,0);
+          writeLamp(368,0);
+          uint16_t joystick_top_=0;
+          write_analog_address(2);
+          delayMicroseconds(50); // wait for settle
+          for(int i=0;i<10;i++) joystick_top_+=analogRead(A0); // average
+          joystick_top_=joystick_top_/10;
+
+          writeDisplay("Joystick Down    \r");
+          writeLamp(341,1);
+          writeLamp(348,1);
+          writeLamp(350,1);
+          writeLamp(352,1);
+          writeLamp(358,1);
+          writeLamp(359,1);
+          writeLamp(360,1);
+          writeLamp(368,1);
+          while(!(previousButtons_EFF_MEM[1] & 2)) readAllButtons(); // wait for press/release
+          while((previousButtons_EFF_MEM[1] & 2)) readAllButtons();
+          writeLamp(341,0);
+          writeLamp(348,0);
+          writeLamp(350,0);
+          writeLamp(352,0);
+          writeLamp(358,0);
+          writeLamp(359,0);
+          writeLamp(360,0);
+          writeLamp(368,0);
+          uint16_t joystick_bottom_=0;
+          write_analog_address(2);
+          delayMicroseconds(50); // wait for settle
+          for(int i=0;i<10;i++) joystick_bottom_+=analogRead(A0); // average
+          joystick_bottom_=joystick_bottom_/10;
+
+          writeDisplay("Joystick Left    \r");
+          writeLamp(341,1);
+          writeLamp(349,1);
+          writeLamp(357,1);
+          writeLamp(358,1);
+          writeLamp(359,1);
+          writeLamp(360,1);
+          writeLamp(361,1);
+          writeLamp(367,1);
+          while(!(previousButtons_EFF_MEM[1] & 2)) readAllButtons(); // wait for press/release
+          while((previousButtons_EFF_MEM[1] & 2)) readAllButtons();
+          writeLamp(341,0);
+          writeLamp(349,0);
+          writeLamp(357,0);
+          writeLamp(358,0);
+          writeLamp(359,0);
+          writeLamp(360,0);
+          writeLamp(361,0);
+          writeLamp(367,0);
+          uint16_t joystick_left_=0;
+          write_analog_address(3);
+          delayMicroseconds(50); // wait for settle
+          for(int i=0;i<10;i++) joystick_left_+=analogRead(A0); // average
+          joystick_left_=joystick_left_/10;
+
+          writeDisplay("Joystick Right   \r");
+          writeLamp(341,1);
+          writeLamp(357,1);
+          writeLamp(358,1);
+          writeLamp(359,1);
+          writeLamp(360,1);
+          writeLamp(361,1);
+          writeLamp(351,1);
+          writeLamp(369,1);
+          while(!(previousButtons_EFF_MEM[1] & 2)) readAllButtons(); // wait for press/release
+          while((previousButtons_EFF_MEM[1] & 2)) readAllButtons();
+          writeLamp(341,0);
+          writeLamp(357,0);
+          writeLamp(358,0);
+          writeLamp(359,0);
+          writeLamp(360,0);
+          writeLamp(361,0);
+          writeLamp(351,0);
+          writeLamp(369,0);
+          uint16_t joystick_right_=0;
+          write_analog_address(3);
+          delayMicroseconds(50); // wait for settle
+          for(int i=0;i<10;i++) joystick_right_+=analogRead(A0); // average
+          joystick_right_=joystick_right_/10;
+
+          writeDisplay("\x15");
+          delay(1);
+          writeDisplay("Do you wish to save the new calibration values? (BANK - No, ENTER - Yes)");
+          writeLamp(320,1);
+          uint8_t result=0;
+          while(!((previousButtons_EFF_MEM[1] & 2)||(previousButtons_EFF_MEM[0] & 32))) readAllButtons(); // wait for press/release
+          if(previousButtons_EFF_MEM[1] & 2) result = 1;
+          while((previousButtons_EFF_MEM[1] & 2)||(previousButtons_EFF_MEM[0] & 32)) readAllButtons();
+
+          writeDisplay("\x15");
+          delay(1);
+          if(result) {
+            writeDisplay("Calibration complete");
+            ME1_top=ME1_top_+10;
+            ME1_bottom=ME1_bottom_-10;
+            ME2_top=ME2_top_+10;
+            ME2_bottom=ME2_bottom_-10;
+            joystick_top=joystick_top_;
+            joystick_bottom=joystick_bottom_;
+            joystick_left=joystick_left_;
+            joystick_right=joystick_right_;
+            Serial.print("Top ");Serial.print(ME2_top);Serial.print(" Bottom ");Serial.println(ME2_bottom);
+          } else {
+            writeDisplay("Calibration canceled");
+          }
+          delay(1000);
+          
+          
           restoreLamps();
+          writeDisplay("\x15");
+          Serial.println("m"); // tell the pi we're done
+          booting=0;
           break;
       }
     }
