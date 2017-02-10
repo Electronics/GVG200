@@ -3,28 +3,29 @@ import threading
 
 from time import sleep
 
-s = serial.Serial("/dev/ttyUSB0", 115200);
+ser = serial.Serial("/dev/ttyUSB0", 115200);
+
 
 import socket
-import sys
 
-HOST, PORT = "localhost", 9999
-data = " ".join(sys.argv[1:])
+HOST = ''                 # Symbolic name meaning all available interfaces
+PORT = 9999              # Arbitrary non-privileged port
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind((HOST, PORT))
+s.listen(1)
 
-# Create a socket (SOCK_STREAM means a TCP socket)
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-sock.connect((HOST, PORT))
+conn, addr = s.accept()
+print 'Connected by', addr
 
 def receive_thread():
-	received = sock.recv(2048)
-	print received
-
+	while(True):
+		data = conn.recv(2048)
+		print data
 
 def send_thread():
-	dat = s.readline()
-	sock.sendall(dat)
-
+	while(True):
+		dat = ser.readline()
+		conn.sendall(dat)
 
 rthread = threading.Thread(target=receive_thread)
 rthread.daemon = True
