@@ -29,8 +29,7 @@ function state2displays() {
 	state = atem.state.video.ME[0].transitionFrameCount;
 	if(state!=undefined) {
 		padded=pad(state,3);
-		port.write("d2,"+padded);
-		port.write([0x00]);
+		port.write("d2,"+padded+Buffer.from("00", "hex"));
 	}
 }
 
