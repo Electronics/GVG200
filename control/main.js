@@ -1,17 +1,38 @@
+var SerialPort = require("serialport");
 var ATEM = require('applest-atem');
+
+var port = new SerialPort("/dev/ttyUSB0", {
+  baudRate: 115200,
+  parser: SerialPort.parsers.readline('\n')
+});
+
+
+function pad(num, size) {
+    var s = num+"";
+    while (s.length < size) s = "0" + s;
+    return s;
+}
 
  
 var atem = new ATEM();
-
+ 
 atem.on('connect', function() {
-	setTimeout(main,10);
+	setInterval(state2displays, 40); 
 });
 
-
-atem.on('stateChanged', function(err, state) {
-  //console.log(state); // catch the ATEM state.
-  client.write(JSON.stringify(state));
+port.on('open', function() {
+    console.log('port is open. connecting to ATEM');
+    atem.connect('10.0.1.220')  
 });
+
+function state2displays() {
+	state = atem.state.video.ME[0].transitionFrameCount;
+	if(state!=undefined) {
+		padded=pad(state,3);
+		port.write("d2,"+padded);
+		port.write([0x00]);
+	}
+}
 
 
 function main() {
@@ -22,33 +43,8 @@ function main() {
 }
 
 
-function parseButton(uid) {
+port.on('data', function (data) {
 
-	switch(uid) {
-		case 162:
-			atem.autoTransition();
-	    		break;
-    		case 163:
-			atem.cutTransition();
-	        	break;
-    		default:
-	        	break;
-	}
-}
-
-var net = require('net');
-
-var client = new net.Socket();
-client.connect(9999, '127.0.0.1', function() {
-	console.log('Connected');
-	atem.connect("10.0.1.220");	
-});
-
-client.on('data', function(data) {
-
-  data = data.toString();
-
-	console.log(data);
   cmd = data.charAt(0);
   params = data.substr(1).split(",");
   
@@ -65,6 +61,21 @@ if(cmd=="b") {
 
 });
 
-client.on('close', function() {
-	console.log('Connection closed');
-});
+
+function parseButton(uid) {
+
+	switch(uid) {
+		case 162:
+			console.log("TRANSITION");
+			atem.autoTransition();
+	    		break;
+    		case 163:
+			console.log("CUT");
+			atem.cutTransition();
+	        	break;
+    		default:
+	        	break;
+	}
+}
+
+
