@@ -1395,11 +1395,22 @@ void setup() {
   digitalWrite(RESET,LOW);
   delay(200);
   readAllButtons();
+  
 
   for(uint8_t i=0;i<9;i++) {
     writeDim(i,1);
     write7SegDisplay(i,"   ");
   }
+
+
+  // Let's wait for the pi to catch up
+  writeDisplay("Waiting for boot...");
+  wait:
+  while(!Serial.available());
+  if(!(Serial.read()=='!')) goto wait; // eww a goto! this IS embedded C after all!
+  writeDisplay("\x15"); // clear display
+
+  
 
   if(previousButtons_DSK_SEC[4] & 0b10000000) {
     // Black cut held
@@ -1408,7 +1419,7 @@ void setup() {
       readAllAnalogs();
     }
   } else {
-    writeDisplay("     Booting...\nVersion 0.53 by Laurie Kirkcaldy");
+    writeDisplay("     Booting...\nVersion 0.54 by Laurie Kirkcaldy");
  
   
     long int startTime = millis();
