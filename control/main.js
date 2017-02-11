@@ -60,6 +60,7 @@ port.on('open', function() {
 
 var laststate;
 var flashs, flashing;
+var ftbflash, ftbstate;
 
 function flash() {
 	if(flashing) {
@@ -75,10 +76,29 @@ function flash() {
 	else {
 		lighton(162);
 		lighton(163);
+		lighton(152);
+		lighton(153);
 	}
+	if(ftbflash) {
+               if(ftbstate==1) {
+                        ftbstate = 0;
+                        lighton(262);
+                }
+                else {
+                        ftbstate = 1;
+                        lightoff(262);
+                }
+	}
+	else {
+		lighton(262);
+	}
+
 }
 
 var prevprog, prevprev;
+
+var lastdsk1on, lastdsk2on, lastdsk1tie, lastdsk2tie;
+var lastftbframes;
 
 function state2displays() {
 	state = atem.state.video.ME[0].transitionFrameCount;
@@ -98,28 +118,40 @@ function state2displays() {
 		lighton(program_bus_1[prog]);
 	} 
 
-    if(prev!=prevprev) {
+       if(prev!=prevprev) {
 		lightoff(preview_bus_1[prevprev]);
 		lighton(preview_bus_1[prev]);
-    }
+        }
 
 	prevprog = prog;
 	prevprev = prev;
 
-	var dsk1on = atem.state.video.ME[0].downstreamKeyOn[0];
-	var dsk2on = atem.state.video.ME[0].downstreamKeyOn[1];
-	var dsk1tie = atem.state.video.ME[0].downstreamKeyTie[0];
-	var dsk2tie = atem.state.video.ME[0].downstreamKeyTie[1];
+	var dsk1on = atem.state.video.downstreamKeyOn[0];
+	var dsk2on = atem.state.video.downstreamKeyOn[1];
+	var dsk1tie = atem.state.video.downstreamKeyTie[0];
+	var dsk2tie = atem.state.video.downstreamKeyTie[1];
 
-	if(dsk1on) { lighton(154); } else {lightoff(154);}
-	if(dsk2on) { lighton(155); } else {lightoff(155);}
-	if(dsk1tie) { lighton(156); } else {lightoff(156);}
-	if(dsk2tie) { lighton(157); } else {lightoff(157);}
+	if(lastdsk1on!=dsk1on){if(dsk1on) { lighton(154); } else {lightoff(154);}}
+	if(lastdsk2on!=dsk2on){if(dsk2on) { lighton(155); } else {lightoff(155);}}
 
-	lighton(153);
-	lighton(152);
+	lastdsk1on = dsk1on;
+	lastdsk2on = dsk2on;
+	lastdsk1tie = dsk1tie;
+	lastdsk2tie = dsk2tie;
+
+	ftbframes =  atem.state.video.ME[0].fadeToBlackFrames;
+
+	if(ftbframes!=undefined && ftbframes!=lastftbframes) {
+
+		display(8,ftbframes);
+
+	}
+
+	lastftbframes = ftbframes;
+
+	if(atem.state.video.ME[0].fadeToBlack) { ftbflash = 1; } else { ftbflash = 0;}
+
 }
-
 
 function main() {
   atem.changeProgramInput(1); // ME1(0) 
@@ -214,14 +246,15 @@ function parseButton(uid) {
 	        	break;
 
 	    case 152:
-	    	dsk1state = invert(dsk1state);
-	    	atem.changeDownstreamKeyOn(1,dsk1state);
+	    	atem.autoDownstreamKey(0);
 	    	break;
 
 	    case 153:
-	    	dsk2state = invert(dsk2state);
-	    	atem.changeDownstreamKeyOn(2,dsk2state);
+		atem.autoDownstreamKey(1);
 	    	break;
+
+	    case 262:
+		atem.fadeToBlack();
 	}
 }
 
