@@ -6,6 +6,14 @@ var port = new SerialPort("/dev/ttyUSB0", {
   parser: SerialPort.parsers.readline('\n')
 });
 
+port.on('open', function() {
+	setTimeout(bootpi, 1000);
+});
+
+function bootpi() {
+port.write("!");
+}
+
 
 function pad(num, size) {
     var s = num+"";
