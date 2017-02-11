@@ -124,7 +124,6 @@ port.on('data', function (data) {
 	uid = parseInt(params[0]);
 	state = parseInt(params[1]);
 
-	console.log(data);
 
 	if(cmd=="b") {
 		if(state==1) {
@@ -134,7 +133,9 @@ port.on('data', function (data) {
 
 	if(cmd=="a") {
 		if(uid==1) {
-			atem.changeTransitionPosition(parseInt(state)/255);
+			console.log("A1 CHANGE");
+			console.log(parseFloat(state)/255);
+			atem.changeTransitionPosition(parseFloat(state)/255);
 			if(parseInt(state)==255) {
 				atem.changeTransitionPosition(0);
 			}
