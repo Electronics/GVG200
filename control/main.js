@@ -105,6 +105,19 @@ function state2displays() {
 
 	prevprog = prog;
 	prevprev = prev;
+
+	var dsk1on = atem.state.video.ME[0].downstreamKeyOn[0];
+	var dsk2on = atem.state.video.ME[0].downstreamKeyOn[1];
+	var dsk1tie = atem.state.video.ME[0].downstreamKeyTie[0];
+	var dsk2tie = atem.state.video.ME[0].downstreamKeyTie[1];
+
+	if(dsk1on) { lighton(154); } else {lightoff(154);}
+	if(dsk2on) { lighton(155); } else {lightoff(155);}
+	if(dsk1tie) { lighton(156); } else {lightoff(156);}
+	if(dsk2tie) { lighton(157); } else {lightoff(157);}
+
+	lighton(153);
+	lighton(152);
 }
 
 
@@ -162,6 +175,19 @@ port.on('data', function (data) {
 
 });
 
+function invert(num){
+	if(num==0) {
+		return 1;
+	}
+
+	else {
+		return 0;
+	}
+}
+
+
+var dsk1state = 0;
+var dsk2state = 0;
 
 function parseButton(uid) {
 
@@ -180,12 +206,22 @@ function parseButton(uid) {
 			console.log("TRANSITION");
 			atem.autoTransition();
 	    		break;
-    		case 163:
+		case 163:
 			console.log("CUT");
 			atem.cutTransition();
 	        	break;
-    		default:
+		default:
 	        	break;
+
+	    case 152:
+	    	dsk1state = invert(dsk1state);
+	    	atem.changeDownstreamKeyOn(1,dsk1state);
+	    	break;
+
+	    case 153:
+	    	dsk2state = invert(dsk2state);
+	    	atem.changeDownstreamKeyOn(2,dsk2state);
+	    	break;
 	}
 }
 
