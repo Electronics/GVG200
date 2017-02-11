@@ -94,13 +94,13 @@ function state2displays() {
 	prev = atem.state.video.ME[0].previewInput;
 	
 	if(prog!=prevprog) {
-		lightoff(preview_bus_1[prevprog]);
-		lighton(preview_bus_1[prog]);
+		lightoff(program_bus_1[prevprog]);
+		lighton(program_bus_1[prog]);
 	} 
 
     if(prev!=prevprev) {
-		lightoff(program_bus_1[prevprev]);
-		lighton(program_bus_1[prev]);
+		lightoff(preview_bus_1[prevprev]);
+		lighton(preview_bus_1[prev]);
     }
 
 	prevprog = prog;
