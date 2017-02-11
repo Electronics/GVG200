@@ -139,12 +139,12 @@ function parseButton(uid) {
 
 	if(uid in flip(program_bus_1)) {
 		console.log("PROG_CHANGE");
-		atem.changeProgramInput(uid-19);
+		atem.changeProgramInput(flip(program_bus_1)[uid]);
 	}
 
 	if(uid in flip(preview_bus_1)) {
 		console.log("PREV CHANGE");
-		atem.changePreviewInput(uid-39);  
+		atem.changePreviewInput(flip(preview_bus_1)[uid]);  
 	}
 
 	switch(uid) {
