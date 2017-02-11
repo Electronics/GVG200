@@ -13,11 +13,11 @@ function pad(num, size) {
     return s;
 }
 
-function lighton(num) {
+function lighton(n) {
 	port.write("l"+n+",1"+Buffer.from("00", "hex")); 
 }
 
-function lightoff(num) {
+function lightoff(n) {
 	port.write("l"+n+",0"+Buffer.from("00", "hex")); 
 }
 
@@ -26,7 +26,7 @@ function maindisplay(data) {
 }
 
 function display(num, data) {
-	port.write("d"+num+","+data+Buffer.from("00", "hex")); 
+	port.write("d"+num+","+pad(data,3)+Buffer.from("00", "hex")); 
 
 }
 
