@@ -132,6 +132,15 @@ port.on('data', function (data) {
 		}
 	}
 
+	if(cmd=="a") {
+		if(uid==1) {
+			atem.changeTransitionPosition(parseInt(state)/255);
+			if(parseInt(state)==255) {
+				atem.changeTransitionPosition(0);
+			}
+		}
+	}
+
 });
 
 
