@@ -115,6 +115,7 @@ function main() {
   atem.changeProgramInput(3, 1); // ME2(1) 
 }
 
+var flipdir = 0;
 
 port.on('data', function (data) {
 
@@ -132,13 +133,26 @@ port.on('data', function (data) {
 	}
 
 	if(cmd=="a") {
-		if(uid==1) {
-			console.log("A1 CHANGE");
-			console.log(parseFloat(state)/255);
-			atem.changeTransitionPosition(parseFloat(state)/255);
-			if(parseInt(state)==255) {
-				atem.changeTransitionPosition(0);
+		if(uid==0) {
+			console.log("A1 CHANGE");			
+
+			var state2 = state;
+
+			if(flipdir==1) {
+				state2 = 255-state;
 			}
+
+			console.log(state2);
+
+			atem.changeTransitionPosition((parseFloat(state2)/255)*10000);
+
+			if(state==255) {
+			flipdir = 1;
+			}
+			if(state==0) {
+			flipdir = 0;
+			}
+
 		}
 	}
 
