@@ -50,7 +50,7 @@ var atem = new ATEM();
  
 atem.on('connect', function() {
 	setInterval(state2displays, 40); 
-	setInterval(flash, 1000);
+	setInterval(flash, 500);
 });
 
 port.on('open', function() {
@@ -148,9 +148,13 @@ port.on('data', function (data) {
 
 			if(state==255) {
 			flipdir = 1;
+			lighton(164);
+			lightoff(165);
 			}
 			if(state==0) {
 			flipdir = 0;
+			lighton(165);
+			lightoff(164);
 			}
 
 		}
