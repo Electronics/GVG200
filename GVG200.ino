@@ -1205,13 +1205,13 @@ void readAllAnalogs() {
   uint16_t scaledValue;
   for(int i=0;i<64;i++) {
     write_analog_address(i);
-    delayMicroseconds(50);
+    //delayMicroseconds(10);
     scaledValue = analogRead(A0);
     if(i==0) scaledValue = constrain(map(scaledValue,ME1_bottom,ME1_top,0,255),0,255);
     else if(i==1) scaledValue = constrain(map(scaledValue,ME2_bottom,ME2_top,0,255),0,255);
     else if(i==2) scaledValue = constrain(map(scaledValue,joystick_bottom,joystick_top,0,255),0,255);
     else if(i==3) scaledValue = constrain(map(scaledValue,joystick_left,joystick_right,0,255),0,255);
-    else scaledValue = map(scaledValue,0,960,255,0);
+    else scaledValue = constrain(map(scaledValue,0,960,255,0),0,255);
 
     if(i<2 && (scaledValue==255 || scaledValue==0)) {
       // We need to acctually show the 0/255 for T bars
@@ -1365,6 +1365,21 @@ void restoreLamps() {
 }
 
 void setup() {
+  
+  // defines for setting and clearing register bits
+  #ifndef cbi
+  #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+  #endif
+  #ifndef sbi
+  #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+  #endif
+  
+  // set prescale to 16 (faster ADC)
+  sbi(ADCSRA,ADPS2) ;
+  cbi(ADCSRA,ADPS1) ;
+  cbi(ADCSRA,ADPS0) ;
+
+  
   Serial.begin(115200);
   randomSeed(analogRead(A1));
   
