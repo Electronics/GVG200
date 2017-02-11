@@ -13,7 +13,39 @@ function pad(num, size) {
     return s;
 }
 
- 
+function lighton(num) {
+	port.write("l"+n+",1"+Buffer.from("00", "hex")); 
+}
+
+function lightoff(num) {
+	port.write("l"+n+",0"+Buffer.from("00", "hex")); 
+}
+
+function maindisplay(data) {
+	port.write("d1,"+data+Buffer.from("00", "hex")); 
+}
+
+function display(num, data) {
+	port.write("d"+num+","+data+Buffer.from("00", "hex")); 
+
+}
+
+
+var key_bus_1 = { 1:0, 2:1, 3:2, 4:3, 5:4, 6:5, 7:6, 8:7, 9:8, 10:9, 10011:12, 10010:13, 3010:14, 3020:15, 2001:16, 2002:17, 1000:18, 0:19};
+var program_bus_1 = { 1:20, 2:21, 3:22, 4:23, 5:24, 6:25, 7:26, 8:27, 9:28, 10:29, 3010:34, 3020:35, 2001:36, 2002:37, 1000:38, 0:39};
+var preview_bus_1 = { 1:40, 2:41, 3:42, 4:43, 5:44, 6:45, 7:46, 8:47, 9:48, 10:49, 3010:54, 3020:55, 2001:56, 2002:57, 1000:58, 0:59};
+
+function flip(obj) {
+	out = {}
+	for (var key in obj) {
+	    var value = obj[key];
+
+	    out[value] = key;
+	}
+	return out;
+}
+
+
 var atem = new ATEM();
  
 atem.on('connect', function() {
@@ -31,19 +63,19 @@ var flashs, flashing;
 
 function flash() {
 	if(flashing) {
-	if(flashs==1) {
-	flashs = 0;
-	port.write("l162,1,"+Buffer.from("00", "hex")); 
+		if(flashs==1) {
+			flashs = 0;
+			lighton(162);
+		}
+		else {
+			flashs = 1;
+			lightoff(162); 
+		}
 	}
 	else {
-	flashs = 1;
-	port.write("l162,0,"+Buffer.from("00", "hex")); 
+		lighton(162);
+		lighton(163);
 	}
-	}
-	else {
-port.write("l162,1,"+Buffer.from("00", "hex"));
-port.write("l163,1,"+Buffer.from("00", "hex"));
-}
 }
 
 var prevprog, prevprev;
@@ -51,30 +83,25 @@ var prevprog, prevprev;
 function state2displays() {
 	state = atem.state.video.ME[0].transitionFrameCount;
 	pos = atem.state.video.ME[0].transitionPosition;
-	if(pos>0) {
-		flashing = 1;
-	}
-	else {
-	flashing = 0;
-	}
+
+	flashing = pos>0 ? 1 : 0;
+
 	if(state!=undefined && state!=laststate) {
-		padded=pad(state,3);
-		laststate = state;
-		port.write("d2,"+padded+Buffer.from("00", "hex"));
+		display(2,state);
 	}
 
 	prog = atem.state.video.ME[0].programInput;
 	prev = atem.state.video.ME[0].previewInput;
 	
 	if(prog!=prevprog) {
-		port.write("l,"+(prevprog+19)+Buffer.from("00", "hex"));
-		port.write("l,"+(prog+19)+",1"+Buffer.from("00", "hex")); 
+		lightoff(preview_bus_1[prevprog]);
+		lighton(preview_bus_1[prog]);
 	} 
 
-        if(prev!=prevprev) {
-                port.write("l,"+(prevprev+39)+",0"+Buffer.from("00", "hex"));
-                port.write("l,"+(prev+39)+",1"+Buffer.from("00", "hex"));
-        }
+    if(prev!=prevprev) {
+		lightoff(program_bus_1[prevprev]);
+		lighton(program_bus_1[prev]);
+    }
 
 	prevprog = prog;
 	prevprev = prev;
@@ -91,31 +118,29 @@ function main() {
 
 port.on('data', function (data) {
 
-  cmd = data.charAt(0);
-  params = data.substr(1).split(",");
-  
-  uid = parseInt(params[0]);
-  state = parseInt(params[1]);
-  //console.log("COMMAND: "+cmd)
-  //console.log("PARAMS: "+params)
+	cmd = data.charAt(0);
+	params = data.substr(1).split(",");
 
-if(cmd=="b") {
-	if(state==1) {
-		parseButton(uid);
+	uid = parseInt(params[0]);
+	state = parseInt(params[1]);
+
+	if(cmd=="b") {
+		if(state==1) {
+			parseButton(uid);
+		}
 	}
-}
 
 });
 
 
 function parseButton(uid) {
 
-	if(uid>=20 && uid<40) {
+	if(uid in flip(program_bus_1)) {
 		console.log("PROG_CHANGE");
 		atem.changeProgramInput(uid-19);
 	}
 
-	if(uid>=40 && uid<60) {
+	if(uid in flip(preview_bus_1)) {
 		console.log("PREV CHANGE");
 		atem.changePreviewInput(uid-39);  
 	}
