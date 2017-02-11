@@ -49,7 +49,7 @@ function flip(obj) {
 var atem = new ATEM();
  
 atem.on('connect', function() {
-	setInterval(state2displays, 20); 
+	setInterval(state2displays, 40); 
 	setInterval(flash, 1000);
 });
 
