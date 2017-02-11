@@ -124,6 +124,8 @@ port.on('data', function (data) {
 	uid = parseInt(params[0]);
 	state = parseInt(params[1]);
 
+	console.log(data);
+
 	if(cmd=="b") {
 		if(state==1) {
 			parseButton(uid);
