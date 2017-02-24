@@ -1421,8 +1421,11 @@ void setup() {
   // Let's wait for the pi to catch up
   writeDisplay("Waiting for boot...");
   wait:
-  while(!Serial.available());
-  if(!(Serial.read()=='!')) goto wait; // eww a goto! this IS embedded C after all!
+  while(!Serial.available()) {
+    Serial.println("?"); // helloooo we're booted and waiting
+    delay(200);
+  }
+  if(!(Serial.read()=='?')) goto wait; // eww a goto! this IS embedded C after all!
   writeDisplay("\x15"); // clear display
 
   
@@ -1471,6 +1474,9 @@ void setup() {
   booting = 0;
   writeDisplay("\x15\x0E");
   delay(10);
+
+  Serial.println("!"); // We've booted, you can now send us commands
+  while(Serial.available()) Serial.read(); // flush out all the junk they've sent us
 }
 
 void waitSerial() {
