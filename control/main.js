@@ -182,6 +182,7 @@ function state2displays() {
 }
 
 var flipdir = 0;
+var restartArduino=false;
 
 port.on('data', function (data) {
 	if(starting) {
@@ -190,7 +191,7 @@ port.on('data', function (data) {
 			port.write("?"+Buffer.from("00", "hex"));
 		} else if(data.charAt(0)=="!") {
 			console.log("Arduino has now started, connecting to ATEM");
-			atem.connect('10.0.1.220')
+			if(!restartArduino) atem.connect('10.0.1.220');
 			starting=false;
 		}
 	} else {
@@ -252,6 +253,7 @@ function invert(num){
 
 var dsk1state = 0;
 var dsk2state = 0;
+var mode = 0; // normal, 1=editor mode
 
 function parseButton(uid) {
 
@@ -276,20 +278,55 @@ function parseButton(uid) {
 			atem.cutTransition();
     	break;
 
-    case 152:
-    	atem.autoDownstreamKey(0);
-    	break;
+	    case 152:
+	    	atem.autoDownstreamKey(0);
+	    	break;
 
-    case 153:
+	    case 153:
 			atem.autoDownstreamKey(1);
-    	break;
+	    	break;
 
-    case 262:
+	    case 262:
 			atem.fadeToBlack();
 			break;
 
+		case 300:
+			if(mode==1) {
+				// Calibration mode!
+				port.write("~"+Buffer.from("00", "hex"));
+			}
+			break;
+
+		case 326:
+			if(mode==1) {
+				// reset!
+				port.write("!"+Buffer.from("00", "hex"));
+				mode = 0;
+				starting = true;
+				restartArduino=true;
+			}
+
+		case 329:
+			//Editor mode!
+			if(mode==1) {
+				mode = 0;
+				lightoff(329);
+				lightoff(300);
+				lightoff(326);
+				break;
+			}
+			mode = 1;
+			lighton(329);
+
+			// this wants to be moved into it's own function and put onto the display instead
+			// show what we can do
+			lighton(300);
+			lighton(326);
+			break;
+
 		default:
-    	break;
+			console.log('Unmapped button pressed! ('+uid+')');
+	    	break;
 	}
 }
 
