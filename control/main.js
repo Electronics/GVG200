@@ -14,6 +14,17 @@ function bootpi() {
 port.write("!");
 }
 
+var atem = new ATEM();
+
+function main() {
+	program_bus_1_flipped=flip(program_bus_1);
+	preview_bus_1_flipped=flip(preview_bus_1);
+  atem.changeProgramInput(1); // ME1(0) 
+  atem.changePreviewInput(2); // ME1(0) 
+  atem.autoTransition(); // ME1(0) 
+  atem.changeProgramInput(3, 1); // ME2(1) 
+}
+
 
 function pad(num, size) {
     var s = num+"";
@@ -43,6 +54,8 @@ function display(num, data) {
 var key_bus_1 = { 1:0, 2:1, 3:2, 4:3, 5:4, 6:5, 7:6, 8:7, 9:8, 10:9, 10011:12, 10010:13, 3010:14, 3020:15, 2001:16, 2002:17, 1000:18, 0:19};
 var program_bus_1 = { 1:20, 2:21, 3:22, 4:23, 5:24, 6:25, 7:26, 8:27, 9:28, 10:29, 3010:34, 3020:35, 2001:36, 2002:37, 1000:38, 0:39};
 var preview_bus_1 = { 1:40, 2:41, 3:42, 4:43, 5:44, 6:45, 7:46, 8:47, 9:48, 10:49, 3010:54, 3020:55, 2001:56, 2002:57, 1000:58, 0:59};
+var program_bus_1_flipped = {};
+var preview_bus_1_flipped = {};
 
 function flip(obj) {
 	out = {}
@@ -53,9 +66,6 @@ function flip(obj) {
 	}
 	return out;
 }
-
-
-var atem = new ATEM();
  
 atem.on('connect', function() {
 	setInterval(state2displays, 50); 
@@ -162,13 +172,6 @@ function state2displays() {
 
 }
 
-function main() {
-  atem.changeProgramInput(1); // ME1(0) 
-  atem.changePreviewInput(2); // ME1(0) 
-  atem.autoTransition(); // ME1(0) 
-  atem.changeProgramInput(3, 1); // ME2(1) 
-}
-
 var flipdir = 0;
 
 port.on('data', function (data) {
@@ -188,7 +191,7 @@ port.on('data', function (data) {
 
 	if(cmd=="a") {
 		if(uid==0) {
-			console.log("A1 CHANGE");			
+			//console.log("A1 CHANGE");			
 
 			var state2 = state;
 
@@ -196,7 +199,7 @@ port.on('data', function (data) {
 				state2 = 255-state;
 			}
 
-			console.log(state2);
+			//console.log(state2);
 
 			atem.changeTransitionPosition((parseFloat(state2)/255)*10000);
 
@@ -234,12 +237,12 @@ function parseButton(uid) {
 
 	if(uid in flip(program_bus_1)) {
 		console.log("PROG_CHANGE");
-		atem.changeProgramInput(flip(program_bus_1)[uid]);
+		atem.changeProgramInput(program_bus_1_flipped[uid]);
 	}
 
 	if(uid in flip(preview_bus_1)) {
 		console.log("PREV CHANGE");
-		atem.changePreviewInput(flip(preview_bus_1)[uid]);  
+		atem.changePreviewInput(preview_bus_1_flipped[uid]);  
 	}
 
 	switch(uid) {

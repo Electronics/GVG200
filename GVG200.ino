@@ -804,14 +804,14 @@ uint8_t analogValues[64] = {0};
 #define NEW_NUM_WEIGHT 3
 #define OLD_NUM_WEIGHT 10
 
-uint16_t ME1_top = 379;
-uint16_t ME1_bottom = 32;
-uint16_t ME2_top = 368;
-uint16_t ME2_bottom = 22;
-uint16_t joystick_top = 480;
-uint16_t joystick_bottom = 253;
-uint16_t joystick_left = 417;
-uint16_t joystick_right = 672;
+uint8_t ME1_top = 110;
+uint8_t ME1_bottom = 235;
+uint8_t ME2_top = 5;
+uint8_t ME2_bottom = 367;
+uint8_t joystick_top = 103;
+uint8_t joystick_bottom = 154;
+uint8_t joystick_left = 119;
+uint8_t joystick_right = 61;
 
 long int lastFlip = 0;
 
@@ -1200,27 +1200,29 @@ void readAllButtons() {
   }
 }
 
-#define DEADZONE 2
+#define DEADZONE 5
 void readAllAnalogs() {
   uint16_t scaledValue;
   for(int i=0;i<64;i++) {
     write_analog_address(i);
-    //delayMicroseconds(10);
+    delayMicroseconds(50);
     scaledValue = analogRead(A0);
-    if(i==0) scaledValue = constrain(map(scaledValue,ME1_bottom,ME1_top,0,255),0,255);
-    else if(i==1) scaledValue = constrain(map(scaledValue,ME2_bottom,ME2_top,0,255),0,255);
-    else if(i==2) scaledValue = constrain(map(scaledValue,joystick_bottom,joystick_top,0,255),0,255);
-    else if(i==3) scaledValue = constrain(map(scaledValue,joystick_left,joystick_right,0,255),0,255);
-    else scaledValue = constrain(map(scaledValue,0,960,255,0),0,255);
+    if(i==0) scaledValue = map(scaledValue,ME1_top,ME1_bottom,255,0);
+    else if(i==1) scaledValue = map(scaledValue,ME2_top,ME2_bottom,255,0);
+    else if(i==2) scaledValue = map(scaledValue,joystick_top,joystick_bottom,0,255);
+    else if(i==3) scaledValue = map(scaledValue,joystick_right,joystick_left,255,0);
+    else scaledValue = map(scaledValue,0,211,255,0);
 
-    if(i<2 && (scaledValue==255 || scaledValue==0)) {
-      // We need to acctually show the 0/255 for T bars
-    }
-    else {
-      scaledValue=(scaledValue*NEW_NUM_WEIGHT + (OLD_NUM_WEIGHT-NEW_NUM_WEIGHT)*analogValues[i])/OLD_NUM_WEIGHT;
+    if(i<2) {
+      // T-bars
+      if(scaledValue<20) scaledValue=0;
+      if(scaledValue>240) scaledValue=255;
     }
     
-    if((scaledValue>analogValues[i]+DEADZONE && analogValues[i]<255-DEADZONE) || (scaledValue<analogValues[i]-DEADZONE && analogValues[i]>DEADZONE) || ((analogValues[i]!=scaledValue) && (scaledValue==0 || scaledValue==255))) {
+    if(scaledValue>60000) scaledValue=0;
+    if(scaledValue>255) scaledValue=255;
+    scaledValue=(scaledValue*NEW_NUM_WEIGHT + (OLD_NUM_WEIGHT-NEW_NUM_WEIGHT)*analogValues[i])/OLD_NUM_WEIGHT;
+    if((scaledValue>analogValues[i]+DEADZONE && analogValues[i]<255-DEADZONE) || (scaledValue<analogValues[i]-DEADZONE && analogValues[i]>DEADZONE)) {
       analogValues[i] = scaledValue;
       if(booting) continue;
       Serial.print("a");Serial.print(i);Serial.print(",");Serial.println(scaledValue);
@@ -1365,23 +1367,7 @@ void restoreLamps() {
 }
 
 void setup() {
-  
-  // defines for setting and clearing register bits
-  #ifndef cbi
-  #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-  #endif
-  #ifndef sbi
-  #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
-  #endif
-  
-  // set prescale to 16 (faster ADC)
-  sbi(ADCSRA,ADPS2) ;
-  cbi(ADCSRA,ADPS1) ;
-  cbi(ADCSRA,ADPS0) ;
-
-  
   Serial.begin(115200);
-  randomSeed(analogRead(A1));
   
   pinMode(WRITE,OUTPUT);
   pinMode(READ, OUTPUT);
@@ -1410,22 +1396,11 @@ void setup() {
   digitalWrite(RESET,LOW);
   delay(200);
   readAllButtons();
-  
 
   for(uint8_t i=0;i<9;i++) {
     writeDim(i,1);
     write7SegDisplay(i,"   ");
   }
-
-
-  // Let's wait for the pi to catch up
-  writeDisplay("Waiting for boot...");
-  wait:
-  while(!Serial.available());
-  if(!(Serial.read()=='!')) goto wait; // eww a goto! this IS embedded C after all!
-  writeDisplay("\x15"); // clear display
-
-  
 
   if(previousButtons_DSK_SEC[4] & 0b10000000) {
     // Black cut held
@@ -1434,7 +1409,7 @@ void setup() {
       readAllAnalogs();
     }
   } else {
-    writeDisplay("     Booting...\nVersion 0.54 by Laurie Kirkcaldy");
+    writeDisplay("     Booting...\nVersion 0.50 by Laurie Kirkcaldy");
  
   
     long int startTime = millis();
@@ -1690,10 +1665,10 @@ void loop() {
           delay(1);
           if(result) {
             writeDisplay("Calibration complete");
-            ME1_top=ME1_top_-5;
-            ME1_bottom=ME1_bottom_+5;
-            ME2_top=ME2_top_-5;
-            ME2_bottom=ME2_bottom_+5;
+            ME1_top=ME1_top_+10;
+            ME1_bottom=ME1_bottom_-10;
+            ME2_top=ME2_top_+10;
+            ME2_bottom=ME2_bottom_-10;
             joystick_top=joystick_top_;
             joystick_bottom=joystick_bottom_;
             joystick_left=joystick_left_;
