@@ -7,7 +7,7 @@ var port = new SerialPort("/dev/ttyUSB0", {
 });
 
 port.on('open', function() {
-	setTimeout(bootpi, 1000);
+	setTimeout(bootpi, 2500);
 });
 
 function bootpi() {
@@ -23,6 +23,7 @@ function pad(num, size) {
 
 function lighton(n) {
 	port.write("l"+n+",1"+Buffer.from("00", "hex")); 
+	
 }
 
 function lightoff(n) {
@@ -57,7 +58,7 @@ function flip(obj) {
 var atem = new ATEM();
  
 atem.on('connect', function() {
-	setInterval(state2displays, 40); 
+	setInterval(state2displays, 50); 
 	setInterval(flash, 500);
 });
 
