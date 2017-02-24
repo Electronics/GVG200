@@ -10,8 +10,14 @@ port.on('open', function() {
 	setTimeout(bootpi, 2500);
 });
 
+process.on('SIGINT', function() {
+	console.log("Exiting...");
+	port.close();
+	process.exit();
+});
+
 function bootpi() {
-port.write("!");
+	port.write("!");
 }
 
 var atem = new ATEM();
@@ -23,7 +29,6 @@ var program_bus_1_flipped = {};
 var preview_bus_1_flipped = {};
 
 function flip(obj) {
-	console.log('hi')
 	out = {}
 	for (var key in obj) {
 	    var value = obj[key];
@@ -33,13 +38,14 @@ function flip(obj) {
 	return out;
 }
 
+program_bus_1_flipped=flip(program_bus_1);
+preview_bus_1_flipped=flip(preview_bus_1);
+
 function main() {
-	program_bus_1_flipped=flip(program_bus_1);
-	preview_bus_1_flipped=flip(preview_bus_1);
-  atem.changeProgramInput(1); // ME1(0) 
-  atem.changePreviewInput(2); // ME1(0) 
-  atem.autoTransition(); // ME1(0) 
-  atem.changeProgramInput(3, 1); // ME2(1) 
+	/*atem.changeProgramInput(1); // ME1(0) 
+	atem.changePreviewInput(2); // ME1(0) 
+	atem.autoTransition(); // ME1(0) 
+	atem.changeProgramInput(3, 1); // ME2(1) */
 }
 
 
@@ -70,6 +76,7 @@ function display(num, data) {
 atem.on('connect', function() {
 	setInterval(state2displays, 50); 
 	setInterval(flash, 500);
+	console.log('ATEM connected')
 });
 
 port.on('open', function() {
@@ -249,24 +256,27 @@ function parseButton(uid) {
 		case 162:
 			console.log("TRANSITION");
 			atem.autoTransition();
-	    		break;
+  		break;
+
 		case 163:
 			console.log("CUT");
 			atem.cutTransition();
-	        	break;
+    	break;
+
+    case 152:
+    	atem.autoDownstreamKey(0);
+    	break;
+
+    case 153:
+			atem.autoDownstreamKey(1);
+    	break;
+
+    case 262:
+			atem.fadeToBlack();
+			break;
+
 		default:
-	        	break;
-
-	    case 152:
-	    	atem.autoDownstreamKey(0);
-	    	break;
-
-	    case 153:
-		atem.autoDownstreamKey(1);
-	    	break;
-
-	    case 262:
-		atem.fadeToBlack();
+    	break;
 	}
 }
 
