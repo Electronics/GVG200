@@ -6,43 +6,25 @@ var port = new SerialPort("/dev/ttyUSB0", {
   parser: SerialPort.parsers.readline('\n')
 });
 
+var starting = true;
 port.on('open', function() {
-	setTimeout(bootpi, 2500);
+	console.log('port is open. waiting for arduino');
+	//port.write("!"+Buffer.from("00", "hex")); // restart arduino (if it's already running)
 });
 
-function bootpi() {
-port.write("!");
-}
+process.on('SIGINT', function() {
+	console.log("Exiting...");
+	port.close();
+	process.exit();
+});
 
-
-function pad(num, size) {
-    var s = num+"";
-    while (s.length < size) s = "0" + s;
-    return s;
-}
-
-function lighton(n) {
-	port.write("l"+n+",1"+Buffer.from("00", "hex")); 
-	
-}
-
-function lightoff(n) {
-	port.write("l"+n+",0"+Buffer.from("00", "hex")); 
-}
-
-function maindisplay(data) {
-	port.write("d1,"+data+Buffer.from("00", "hex")); 
-}
-
-function display(num, data) {
-	port.write("d"+num+","+pad(data,3)+Buffer.from("00", "hex")); 
-
-}
-
+var atem = new ATEM();
 
 var key_bus_1 = { 1:0, 2:1, 3:2, 4:3, 5:4, 6:5, 7:6, 8:7, 9:8, 10:9, 10011:12, 10010:13, 3010:14, 3020:15, 2001:16, 2002:17, 1000:18, 0:19};
 var program_bus_1 = { 1:20, 2:21, 3:22, 4:23, 5:24, 6:25, 7:26, 8:27, 9:28, 10:29, 3010:34, 3020:35, 2001:36, 2002:37, 1000:38, 0:39};
 var preview_bus_1 = { 1:40, 2:41, 3:42, 4:43, 5:44, 6:45, 7:46, 8:47, 9:48, 10:49, 3010:54, 3020:55, 2001:56, 2002:57, 1000:58, 0:59};
+var program_bus_1_flipped = {};
+var preview_bus_1_flipped = {};
 
 function flip(obj) {
 	out = {}
@@ -54,17 +36,53 @@ function flip(obj) {
 	return out;
 }
 
+program_bus_1_flipped=flip(program_bus_1);
+preview_bus_1_flipped=flip(preview_bus_1);
 
-var atem = new ATEM();
+function main() {
+	/*atem.changeProgramInput(1); // ME1(0) 
+	atem.changePreviewInput(2); // ME1(0) 
+	atem.autoTransition(); // ME1(0) 
+	atem.changeProgramInput(3, 1); // ME2(1) */
+}
+
+
+function pad(num, size) {
+    var s = num+"";
+    while (s.length < size) s = "0" + s;
+    return s;
+}
+
+function lighton(n) {
+	if(isNaN(n)) {
+		console.log("Asked to turn a NaN light on");
+		return;
+	}
+	port.write("l"+n+",1"+Buffer.from("00", "hex")); 
+	
+}
+
+function lightoff(n) {
+	if(isNaN(n)) {
+		console.log("Asked to turn a NaN light off");
+		return;
+	}
+	port.write("l"+n+",0"+Buffer.from("00", "hex")); 
+}
+
+function maindisplay(data) {
+	port.write("d1,"+data+Buffer.from("00", "hex")); 
+}
+
+function display(num, data) {
+	port.write("d"+num+","+pad(data,3)+Buffer.from("00", "hex")); 
+
+}
  
 atem.on('connect', function() {
 	setInterval(state2displays, 50); 
 	setInterval(flash, 500);
-});
-
-port.on('open', function() {
-    console.log('port is open. connecting to ATEM');
-    atem.connect('10.0.1.220')  
+	console.log('ATEM connected')
 });
 
 var laststate;
@@ -110,6 +128,7 @@ var lastdsk1on, lastdsk2on, lastdsk1tie, lastdsk2tie;
 var lastftbframes;
 
 function state2displays() {
+	if(starting) return;
 	state = atem.state.video.ME[0].transitionFrameCount;
 	pos = atem.state.video.ME[0].transitionPosition;
 
@@ -123,12 +142,12 @@ function state2displays() {
 	prev = atem.state.video.ME[0].previewInput;
 	
 	if(prog!=prevprog) {
-		lightoff(program_bus_1[prevprog]);
+		lightoff(program_bus_1[prevprog]); // One of these produces a NaN when first connected
 		lighton(program_bus_1[prog]);
 	} 
 
        if(prev!=prevprev) {
-		lightoff(preview_bus_1[prevprev]);
+		lightoff(preview_bus_1[prevprev]); // or this produces a NaN?
 		lighton(preview_bus_1[prev]);
         }
 
@@ -162,55 +181,59 @@ function state2displays() {
 
 }
 
-function main() {
-  atem.changeProgramInput(1); // ME1(0) 
-  atem.changePreviewInput(2); // ME1(0) 
-  atem.autoTransition(); // ME1(0) 
-  atem.changeProgramInput(3, 1); // ME2(1) 
-}
-
 var flipdir = 0;
 
 port.on('data', function (data) {
-
-	cmd = data.charAt(0);
-	params = data.substr(1).split(",");
-
-	uid = parseInt(params[0]);
-	state = parseInt(params[1]);
-
-
-	if(cmd=="b") {
-		if(state==1) {
-			parseButton(uid);
+	if(starting) {
+		if(data.charAt(0)=="?") {
+			console.log("Noticed arduino is ready, starting");
+			port.write("?"+Buffer.from("00", "hex"));
+		} else if(data.charAt(0)=="!") {
+			console.log("Arduino has now started, connecting to ATEM");
+			atem.connect('10.0.1.220')
+			starting=false;
 		}
-	}
+	} else {
 
-	if(cmd=="a") {
-		if(uid==0) {
-			console.log("A1 CHANGE");			
+		cmd = data.charAt(0);
+		params = data.substr(1).split(",");
 
-			var state2 = state;
+		uid = parseInt(params[0]);
+		state = parseInt(params[1]);
 
-			if(flipdir==1) {
-				state2 = 255-state;
+
+		if(cmd=="b") {
+			if(state==1) {
+				parseButton(uid);
 			}
+		}
 
-			console.log(state2);
+		if(cmd=="a") {
+			if(uid==0) {
+				//console.log("A1 CHANGE");			
 
-			atem.changeTransitionPosition((parseFloat(state2)/255)*10000);
+				var state2 = state;
 
-			if(state==255) {
-			flipdir = 1;
-			lighton(164);
-			lightoff(165);
+				if(flipdir==1) {
+					state2 = 255-state;
+				}
+
+				//console.log(state2);
+
+				atem.changeTransitionPosition((parseFloat(state2)/255)*10000);
+
+				if(state==255) {
+				flipdir = 1;
+				lighton(164);
+				lightoff(165);
+				}
+				if(state==0) {
+				flipdir = 0;
+				lighton(165);
+				lightoff(164);
+				}
+
 			}
-			if(state==0) {
-			flipdir = 0;
-			lighton(165);
-			lightoff(164);
-			}
-
 		}
 	}
 
@@ -234,36 +257,39 @@ function parseButton(uid) {
 
 	if(uid in flip(program_bus_1)) {
 		console.log("PROG_CHANGE");
-		atem.changeProgramInput(flip(program_bus_1)[uid]);
+		atem.changeProgramInput(program_bus_1_flipped[uid]);
 	}
 
 	if(uid in flip(preview_bus_1)) {
 		console.log("PREV CHANGE");
-		atem.changePreviewInput(flip(preview_bus_1)[uid]);  
+		atem.changePreviewInput(preview_bus_1_flipped[uid]);  
 	}
 
 	switch(uid) {
 		case 162:
 			console.log("TRANSITION");
 			atem.autoTransition();
-	    		break;
+  		break;
+
 		case 163:
 			console.log("CUT");
 			atem.cutTransition();
-	        	break;
+    	break;
+
+    case 152:
+    	atem.autoDownstreamKey(0);
+    	break;
+
+    case 153:
+			atem.autoDownstreamKey(1);
+    	break;
+
+    case 262:
+			atem.fadeToBlack();
+			break;
+
 		default:
-	        	break;
-
-	    case 152:
-	    	atem.autoDownstreamKey(0);
-	    	break;
-
-	    case 153:
-		atem.autoDownstreamKey(1);
-	    	break;
-
-	    case 262:
-		atem.fadeToBlack();
+    	break;
 	}
 }
 
