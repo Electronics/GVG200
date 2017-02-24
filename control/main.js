@@ -22,6 +22,17 @@ var preview_bus_1 = { 1:40, 2:41, 3:42, 4:43, 5:44, 6:45, 7:46, 8:47, 9:48, 10:4
 var program_bus_1_flipped = {};
 var preview_bus_1_flipped = {};
 
+function flip(obj) {
+	console.log('hi')
+	out = {}
+	for (var key in obj) {
+	    var value = obj[key];
+
+	    out[value] = key;
+	}
+	return out;
+}
+
 function main() {
 	program_bus_1_flipped=flip(program_bus_1);
 	preview_bus_1_flipped=flip(preview_bus_1);
@@ -54,17 +65,6 @@ function maindisplay(data) {
 function display(num, data) {
 	port.write("d"+num+","+pad(data,3)+Buffer.from("00", "hex")); 
 
-}
-
-function flip(obj) {
-	console.log('hi')
-	out = {}
-	for (var key in obj) {
-	    var value = obj[key];
-
-	    out[value] = key;
-	}
-	return out;
 }
  
 atem.on('connect', function() {
